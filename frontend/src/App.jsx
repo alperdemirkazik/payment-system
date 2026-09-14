@@ -1,133 +1,122 @@
 import { useState } from 'react';
-import { Container, Card, Form, Button, Row, Col, Alert } from 'react-bootstrap';
 
 function App() {
-  const [formData, setFormData] = useState({
-    cardHolderName: '',
-    email: '',
-    cardNumber: '',
-    expireMonth: '',
-    expireYear: '',
-    cvc: '',
-    amount: ''
-});
+    const [formData, setFormData] = useState({
+        cardHolderName: '',
+        email: '',
+        cardNumber: '',
+        expireMonth: '',
+        expireYear: '',
+        cvc: '',
+        amount: ''
+    });
 
-  const [mesaj, setMesaj] = useState({ tip: '', metin: '' });
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    let formattedValue = value;
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const response = await fetch('http://localhost:5000/api/payment/process', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            });
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                alert(`✅ Ödeme Başarılı! İşlem No: ${data.paymentId}`);
+            } else {
+                alert(`❌ Hata: ${data.errorMessage}`);
+            }
+        } catch (error) {
+            console.error('İşlem sırasında hata oluştu:', error);
+            alert('Sunucuya ulaşılamadı!');
+        }
+    };
 
-    if (name === 'cardNumber') {
-      let rawValue = value.replace(/\D/g, '');
-      if (rawValue.length > 16) rawValue = rawValue.slice(0, 16);
-      formattedValue = rawValue.replace(/(\d{4})/g, '$1 ').trim();
-    } 
-    else if (name === 'expirationDate') {
-      let rawValue = value.replace(/\D/g, '');
-      if (rawValue.length > 4) rawValue = rawValue.slice(0, 4);
-      if (rawValue.length >= 3) {
-        formattedValue = `${rawValue.slice(0, 2)}/${rawValue.slice(2, 4)}`;
-      } else {
-        formattedValue = rawValue;
-      }
-    }
-    else if (name === 'cvc') {
-      formattedValue = value.replace(/\D/g, '').slice(0, 3);
-    }
+    // Yılları dinamik olarak bugünden itibaren 15 yıl ileriye kadar hesaplıyoruz
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: 15 }, (_, i) => currentYear + i);
 
-    setFormData({ ...formData, [name]: formattedValue });
-  };
+    return (
+        <div className="container py-5" style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
+            <div className="row justify-content-center">
+                <div className="col-lg-6 col-md-8">
+                    <div className="card shadow-lg border-0 rounded-4">
+                        <div className="card-header bg-dark text-white text-center py-3 rounded-top-4">
+                            <h4 className="mb-0">💳 Güvenli Ödeme Noktası</h4>
+                        </div>
+                        
+                        <div className="card-body p-4 p-md-5">
+                            <form onSubmit={handleSubmit}>
+                                {/* Müşteri Bilgileri */}
+                                <h5 className="mb-3 text-secondary border-bottom pb-2">Kişisel Bilgiler</h5>
+                                <div className="mb-3">
+                                    <label className="form-label fw-semibold">Kart Üzerindeki İsim</label>
+                                    <input type="text" className="form-control form-control-lg" name="cardHolderName" value={formData.cardHolderName} onChange={handleChange} required />
+                                </div>
+                                
+                                <div className="mb-4">
+                                    <label className="form-label fw-semibold">E-Posta Adresi</label>
+                                    <input type="email" className="form-control form-control-lg" name="email" value={formData.email} onChange={handleChange} required />
+                                </div>
 
-  const odemeYap = async (e) => {
-    e.preventDefault();
-    setMesaj({ tip: 'info', metin: 'Iyzico ile görüşülüyor, şifreli tünel açılıyor...' });
+                                {/* Kart Bilgileri */}
+                                <h5 className="mb-3 text-secondary border-bottom pb-2">Kart Bilgileri</h5>
+                                <div className="mb-3">
+                                    <label className="form-label fw-semibold">Kart Numarası</label>
+                                    <input type="text" className="form-control form-control-lg" name="cardNumber" value={formData.cardNumber} onChange={handleChange} required maxLength="16" />
+                                </div>
 
-    // C# / Node backend'in kafası karışmasın diye veriyi Iyzico formatına çeviriyoruz
-    const cleanCardNumber = formData.cardNumber.replace(/\s/g, '');
-    const [month, year] = formData.expirationDate.split('/');
-    const fullYear = year ? `20${year}` : ''; // YY'yi YYYY formatına çevir (Örn: 28 -> 2028)
+                                <div className="row">
+                                    <div className="col-4 mb-3">
+                                        <label className="form-label fw-semibold">Ay</label>
+                                        <select className="form-select form-select-lg text-center" name="expireMonth" value={formData.expireMonth} onChange={handleChange} required>
+                                            <option value="" disabled>Seç</option>
+                                            {[...Array(12)].map((_, i) => {
+                                                const month = String(i + 1).padStart(2, '0');
+                                                return <option key={month} value={month}>{month}</option>
+                                            })}
+                                        </select>
+                                    </div>
+                                    <div className="col-4 mb-3">
+                                        <label className="form-label fw-semibold">Yıl</label>
+                                        <select className="form-select form-select-lg text-center" name="expireYear" value={formData.expireYear} onChange={handleChange} required>
+                                            <option value="" disabled>Seç</option>
+                                            {years.map(year => (
+                                                <option key={year} value={year}>{year}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="col-4 mb-4">
+                                        <label className="form-label fw-semibold">CVC</label>
+                                        <input type="text" className="form-control form-control-lg text-center" name="cvc" value={formData.cvc} onChange={handleChange} required maxLength="3" />
+                                    </div>
+                                </div>
 
-    try {
-      const response = await fetch('http://127.0.0.1:5000/api/payment/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: formData.email,
-          cardHolderName: formData.cardHolderName,
-          cardNumber: cleanCardNumber,
-          expireMonth: month,
-          expireYear: fullYear,
-          cvc: formData.cvc,
-          amount: parseFloat(formData.amount)
-        })
-      });
+                                {/* Ödeme Tutarı ve Buton */}
+                                <div className="mb-4 bg-light p-3 rounded border">
+                                    <label className="form-label fw-bold text-dark">Ödenecek Tutar (TL)</label>
+                                    <div className="input-group input-group-lg">
+                                        <span className="input-group-text bg-white">₺</span>
+                                        <input type="number" className="form-control" name="amount" value={formData.amount} onChange={handleChange} required />
+                                    </div>
+                                </div>
 
-      const data = await response.json();
-
-      // Iyzico bize "success" veya "failure" döner
-      if (data.status === 'success') {
-        setMesaj({ tip: 'success', metin: 'Ödeme Başarılı! 💸 Milyon dolarlık sisteme hoş geldin.' });
-      } else {
-        // Iyzico'nun red sebebini (limit yetersiz, kart geçersiz vs.) ekrana basalım
-        setMesaj({ tip: 'danger', metin: `Hata: ${data.errorMessage}` });
-      }
-    } catch {
-      setMesaj({ tip: 'danger', metin: 'Sunucuya ulaşılamıyor. Arka plan motoru (5000) açık mı?' });
-    }
-  };
-
-  return (
-    <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
-      <Card className="shadow-lg border-0" style={{ width: '420px', borderRadius: '15px' }}>
-        <Card.Body className="p-5">
-          <h3 className="text-center mb-4 fw-bold text-primary">💳 Iyzico Ödeme</h3>
-          
-          {mesaj.metin && <Alert variant={mesaj.tip}>{mesaj.metin}</Alert>}
-
-          <Form onSubmit={odemeYap}>
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-semibold">Kart Sahibinin Adı</Form.Label>
-              <Form.Control type="text" name="cardHolderName" value={formData.cardHolderName} onChange={handleChange} required />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-semibold">Kart Numarası</Form.Label>
-              <Form.Control type="text" name="cardNumber" placeholder="0000 0000 0000 0000" value={formData.cardNumber} onChange={handleChange} required />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-  <Form.Label className="fw-semibold">E-Posta Adresi</Form.Label>
-  <Form.Control type="email" name="email" value={formData.email} onChange={handleChange} required />
-</Form.Group>
-
-            <Row>
-              <Col>
-                <Form.Group className="mb-3">
-                  <Form.Label className="fw-semibold">Son Kullanma</Form.Label>
-                  <Form.Control type="text" name="expirationDate" placeholder="AA/YY" value={formData.expirationDate} onChange={handleChange} required />
-                </Form.Group>
-              </Col>
-              <Col>
-                <Form.Group className="mb-3">
-                  <Form.Label className="fw-semibold">CVV</Form.Label>
-                  <Form.Control type="password" name="cvc" placeholder="***" value={formData.cvc} onChange={handleChange} required />
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Form.Group className="mb-4">
-              <Form.Label className="fw-semibold">Tutar (₺)</Form.Label>
-              <Form.Control type="number" name="amount" value={formData.amount} onChange={handleChange} step="0.01" required />
-            </Form.Group>
-
-            <Button type="submit" variant="primary" size="lg" className="w-100 fw-bold shadow-sm">Ödemeyi Tamamla</Button>
-          </Form>
-
-        </Card.Body>
-      </Card>
-    </Container>
-  );
+                                <button type="submit" className="btn btn-primary btn-lg w-100 fw-bold py-3 shadow-sm">
+                                    🔒 Ödemeyi Tamamla
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 export default App;
