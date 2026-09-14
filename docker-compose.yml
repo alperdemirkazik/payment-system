@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  # 1. VERİTABANI MOTORU
+  db:
+    image: postgres:16
+    container_name: odeme_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123
+      POSTGRES_DB: odemesistemi  
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata_v3:/var/lib/postgresql/data
+
+  # 2. ARKA PLAN MOTORU (Node.js)
+  backend:
+    build: ./backend
+    container_name: odeme_backend
+    restart: always
+    env_file:                # İŞTE BU İKİ SATIR EKLENDİ
+      - ./backend/.env       # Docker artık şifreleri bu dosyadan okuyacak
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db # Önce veritabanı kalksın, sonra bu kalksın demek
+
+  # 3. ÖN YÜZ MOTORU (React / Vite)
+  frontend:
+    build: ./frontend
+    container_name: odeme_frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend # Önce backend kalksın, sonra bu kalksın demek
+
+volumes:
+  pgdata_v3:
