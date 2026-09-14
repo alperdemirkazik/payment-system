@@ -3,13 +3,14 @@ import { Container, Card, Form, Button, Row, Col, Alert } from 'react-bootstrap'
 
 function App() {
   const [formData, setFormData] = useState({
-    cardHolderName: 'Alper Demirkazık',
+    cardHolderName: '',
+    email: '',
     cardNumber: '',
-    expirationDate: '',
+    expireMonth: '',
+    expireYear: '',
     cvc: '',
-    amount: '250.75'
-    
-  });
+    amount: ''
+});
 
   const [mesaj, setMesaj] = useState({ tip: '', metin: '' });
 

@@ -12,20 +12,17 @@ const pool = new Pool({
     user: 'postgres',
     host: 'db',
     database: 'odemesistemi',
-    password: process.env.DB_PASSWORD, // Şifre artık gizli kasadan geliyor!
+    password: process.env.DB_PASSWORD, 
     port: 5432,
 });
 
-
-
 const iyzipay = new Iyzipay({
-    apiKey: process.env.IYZIPAY_API_KEY,       // API Key kasadan geliyor!
-    secretKey: process.env.IYZIPAY_SECRET_KEY, // Secret Key kasadan geliyor!
+    apiKey: process.env.IYZIPAY_API_KEY,       
+    secretKey: process.env.IYZIPAY_SECRET_KEY, 
     uri: 'https://sandbox-api.iyzipay.com'
 });
 
 app.post('/api/payment/process', (req, res) => {
-    // Arayüzden artık Email de gelecek
     const { cardHolderName, email, cardNumber, expireMonth, expireYear, cvc, amount } = req.body;
 
     const request = {
@@ -47,22 +44,22 @@ app.post('/api/payment/process', (req, res) => {
             cvc: cvc,
             registerCard: '0'
         },
-        // Müşteri bilgisini arayüzden gelen dinamik email ile güncelledik
+        // KİŞİSEL VERİLER STANDART TEST VERİLERİYLE DEĞİŞTİRİLDİ
         buyer: {
             id: 'BY789',
-            name: cardHolderName.split(' ')[0] || 'Müşteri',
-            surname: cardHolderName.split(' ')[1] || 'Soyadı',
-            gsmNumber: '+905350000000',
+            name: cardHolderName.split(' ')[0] || 'Musteri',
+            surname: cardHolderName.split(' ')[1] || 'Soyadi',
+            gsmNumber: '+905555555555',
             email: email, 
-            identityNumber: '74300864791',
-            registrationAddress: 'Ulus Meydanı civarı',
+            identityNumber: '11111111111', 
+            registrationAddress: 'Musteri Adresi Belirtilmedi',
             ip: '85.34.78.112',
-            city: 'Ankara',
+            city: 'Istanbul',
             country: 'Turkey'
         },
-        shippingAddress: { contactName: cardHolderName, city: 'Ankara', country: 'Turkey', address: 'Merkez' },
-        billingAddress: { contactName: cardHolderName, city: 'Ankara', country: 'Turkey', address: 'Merkez' },
-        basketItems: [{ id: 'BI101', name: 'Hizmet Bedeli', category1: 'Yazılım', itemType: Iyzipay.BASKET_ITEM_TYPE.VIRTUAL, price: amount.toString() }]
+        shippingAddress: { contactName: cardHolderName, city: 'Istanbul', country: 'Turkey', address: 'Musteri Adresi Belirtilmedi' },
+        billingAddress: { contactName: cardHolderName, city: 'Istanbul', country: 'Turkey', address: 'Musteri Adresi Belirtilmedi' },
+        basketItems: [{ id: 'BI101', name: 'Hizmet Bedeli', category1: 'Yazilim', itemType: Iyzipay.BASKET_ITEM_TYPE.VIRTUAL, price: amount.toString() }]
     };
 
     iyzipay.payment.create(request, async function (err, result) {
@@ -70,7 +67,6 @@ app.post('/api/payment/process', (req, res) => {
         
         if (result.status === 'success') {
             try {
-                // SİHİRLİ DOKUNUŞ: Önce müşteriyi kaydet (veya bul), ID'sini al
                 const musteriRes = await pool.query(
                     `INSERT INTO musteriler (ad_soyad, email) 
                      VALUES ($1, $2) 
@@ -80,14 +76,13 @@ app.post('/api/payment/process', (req, res) => {
                 );
                 const musteriId = musteriRes.rows[0].id;
 
-                // Sonra o ID ile ödemeyi kaydet
                 await pool.query(
                     'INSERT INTO odemeler (musteri_id, islem_no, fiyat, durum) VALUES ($1, $2, $3, $4)',
                     [musteriId, result.paymentId, result.price, 'BASARILI']
                 );
-                console.log(`✅ Fiş Kesildi! Müşteri ID: ${musteriId}, İşlem: ${result.paymentId}`);
+                console.log(`[BAŞARILI KAYIT] Müşteri ID: ${musteriId}, İşlem: ${result.paymentId}`);
             } catch (dbErr) {
-                console.log("Veritabanı hatası:", dbErr);
+                console.error("[VERİTABANI HATASI]:", dbErr);
             }
         }
         res.json(result); 
@@ -95,4 +90,4 @@ app.post('/api/payment/process', (req, res) => {
 });
 
 const PORT = 5000;
-app.listen(PORT, () => console.log(`🚀 Arka plan motoru ${PORT} portunda çalışıyor!`));
+app.listen(PORT, () => console.log(`[SİSTEM] Arka plan motoru ${PORT} portunda aktif.`));
