@@ -22,6 +22,44 @@ const iyzipay = new Iyzipay({
     uri: 'https://sandbox-api.iyzipay.com'
 });
 
+pool.query(`
+
+
+  CREATE TABLE IF NOT EXISTS ogrenciler (
+      id SERIAL PRIMARY KEY,
+      ad_soyad VARCHAR(100),
+      telefon VARCHAR(20),
+      seviye VARCHAR(50),
+      kayit_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+`).catch(err => console.error("Tablo oluşturma hatası:", err));
+
+// -- YENİ EKLENEN KISIM: TEST ROTASI --
+app.get('/api/test', (req, res) => {
+    res.send("Selam kanka, ben backend! Yeni kodları başarıyla okuyorum.");
+});
+
+// -- YENİ EKLENEN KISIM: KURS KAYIT ROTASI --
+app.post('/api/kayit', async (req, res) => {
+    try {
+        // React'ten gelen verileri al
+        const { adSoyad, telefon, seviye } = req.body;
+        
+        // Veritabanına kaydet
+        await pool.query(
+            'INSERT INTO ogrenciler (ad_soyad, telefon, seviye) VALUES ($1, $2, $3)',
+            [adSoyad, telefon, seviye]
+        );
+        
+        console.log(`[ÖĞRENCİ KAYDI BAŞARILI] ${adSoyad}`);
+        res.status(200).json({ message: "Kayıt başarılı, ödemeye yönlendiriliyor." });
+        
+    } catch (error) {
+        console.error("[KAYIT HATASI]:", error);
+        res.status(500).json({ status: "error", message: "Sunucu hatası" });
+    }
+});
+
 app.post('/api/payment/process', (req, res) => {
     const { cardHolderName, email, cardNumber, expireMonth, expireYear, cvc, amount } = req.body;
 
